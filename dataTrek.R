@@ -1,8 +1,4 @@
-#install.packages("here")
-#install.packages("sf")
-#install.packages("rnaturalearth")
-#install.packages("rnaturalearthhires", repos = "http://packages.ropensci.org", type = "source")
-library(sf)
+
 library(rnaturalearth)
 library(tidyverse)
 library(ggthemes)
@@ -70,7 +66,7 @@ p <- ggplot(
   geom_col()
 p
 
-ggsave("results\\box_plot.png", p, width = 5.97, height = 4.79, dpi = 300)
+ggsave("results/box_plot.png", p, width = 5.97, height = 4.79, dpi = 300)
 
 #=============================================================================#   
 #transforming variables values in percentage to calculate relative abundance
@@ -149,7 +145,7 @@ plot1 <- ggplot(
     aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
     label.x = 350
   ) 
-  
+
 
 # Plot O2
 plot2 <- ggplot(
@@ -166,10 +162,10 @@ plot2 <- ggplot(
     y = "PPE abundance (%)"
   ) +
   
-stat_cor(
-  aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
-  label.x = 13
-) 
+  stat_cor(
+    aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+    label.x = 13
+  ) 
 
 #Plot salinity
 plot3 <- ggplot(
@@ -185,10 +181,10 @@ plot3 <- ggplot(
     x = "Salinity (PSU)",
     y = "PPE abundance (%)"
   ) +
-stat_cor(
-  aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
-  label.x = 37
-) 
+  stat_cor(
+    aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+    label.x = 35
+  ) 
 
 #Plot NO2
 plot4 <- ggplot(
@@ -204,10 +200,10 @@ plot4 <- ggplot(
     x = "NO2 (umol/L)",
     y = "PPE abundance (%)"
   ) +
-stat_cor(
-  aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
-  label.x = .4
-) 
+  stat_cor(
+    aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+    label.x = .2
+  ) 
 
 #Plot NO2NO3
 plot5 <- ggplot(
@@ -223,10 +219,10 @@ plot5 <- ggplot(
     x = "NO2NO3 (umol/L)",
     y = "PPE abundance (%)"
   ) +
-stat_cor(
-  aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
-  label.x = 10
-) 
+  stat_cor(
+    aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+    label.x = 10
+  ) 
 
 #Plot NO2NO3
 plot6 <- ggplot(
@@ -243,10 +239,10 @@ plot6 <- ggplot(
     y = "PPE abundance (%)"
   ) +
   
-stat_cor(
-  aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
-  label.x = 1
-) 
+  stat_cor(
+    aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+    label.x = 1
+  ) 
 
 figure <- ggarrange(plot1, plot2, plot3, plot4, plot5, plot6,
                     ncol = 2, nrow = 3)
@@ -293,6 +289,3 @@ ggsave("/results/ppe_env_feature_point.png", fig2, width = 5.97, height = 4.79, 
 pp_abundance <- read.csv("data/ppe_abundance.csv")
 head(pp_abundance)
 glimpse(pp_abundance)
-
-
-
