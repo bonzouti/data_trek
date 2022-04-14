@@ -1,4 +1,6 @@
-
+#install.packages("sf")
+#devtools::install_github("haozhu233/kableExtra")
+#install.packages("PerformanceAnalytics")
 library(tidyverse)
 library(ggthemes)
 library(scales)
@@ -7,35 +9,61 @@ library(paletteer)
 library(rmarkdown)
 library(xaringan)
 library(here)
-library("ggpubr")
+library(ggpubr)
+library(devtools)
+library(maps)
+library(mapproj)
+library(rnaturalearth)
+library(sf)
+library(ggmap)
+library(leaflet)
+library(sp)
+library(kableExtra)
+library(corrplot)
+library(PerformanceAnalytics)
+library(patchwork)
+library(descr)
 here("data")
 getwd()
 setwd("C:/Users/PROF-ENS/Desktop/data_trek")
 
 euka_ppe <- read.csv("data/euk_prok_stacked.csv")
-euka_ppe
+view(euka_ppe)
 #=======================#
 #delete and rename columns
 #=======================#
 euka <- euka_ppe %>% 
   select(-Eukaryota, -X) %>% 
   rename(NPP = Non.photosynthetic_procaryotes, PP = Photosynthetic_procaryotes)
-euka
+glimpse(euka)
 
-data_raw <- pivot_longer(euka, 2:4,names_to = "types", values_to = "abund")
+data_raw <- pivot_longer(euka, 2:4,names_to = "Picoeukarytes", values_to = "abund")
 
 data_raw
+
+#density
+p <- ggplot(data_raw, aes(x=log(abund),group= Picoeukarytes, color=Picoeukarytes)) + 
+  geom_density(adjust = 1.5)+
+  #viridis::scale_fill_viridis(discrete=TRUE) +
+  #viridis::scale_color_viridis(discrete=TRUE)+
+  scale_fill_manual(values=c("darkorange", "green", "purple"))+
+  labs(title = "Proportion of PPEs and the overall picophytoplankton",
+       x = "Abundence %",
+      
+       fill = "Picoeukarytes"
+       
+  )
+  #facet_wrap(~types)
+p
 #=======================#
 #Visualization data
 #=======================#
-ggplot(
-  data = data_raw,
-  mapping = aes(
-    x = abund,
-    y = Samples_ID, fill=types
-  )
-) +
-  geom_col()
+data_raw %>% 
+ggplot( aes(x=Picoeukarytes, fill=Picoeukarytes, )) +
+  geom_histogram(binwidth = 1000) +
+  scale_fill_manual(values=c("darkorange", "green", "purple")) 
+  #theme_ipsum() +
+  #labs(fill="")
 
 #=======================#
 #Boxplot visualization
@@ -57,8 +85,8 @@ ggplot(
 p <- ggplot(
   data = data_raw,
   mapping = aes(
-    x = abund,
-    y = forcats::fct_reorder(types, abund),
+    y = abund,
+    x = forcats::fct_reorder(types, abund),
     fill = types
   )
 ) +
@@ -93,23 +121,45 @@ head(ppe_stacked)
 #==================#
 data_pivot <- pivot_longer(ppe_stacked, 2:4,names_to = "Pp_types", values_to = "abundance")
 
-data_pivot
+head(data_pivot)
+
+#density 
+
+ggplot(data_pivot, aes(x= abundance,group= Pp_types, color=Pp_types)) + 
+  geom_histogram(binwidth = .5)+
+  scale_fill_manual(values = c("darkorange", "green", "purple")) 
+  #viridis::scale_fill_viridis(discrete=TRUE) +
+  #viridis::scale_color_viridis(discrete=TRUE)+
+  labs(title = "Proportion of PPEs and the overall picophytoplankton",
+       x = "abundence %",
+       
+       fill = "Picoeukarytes\nPp_types"
+       
+  )
 
 #=================================#
 #bar plot of relative abundance
 #=================================#
 fig1 <- ggplot(data_pivot, aes(fill = Pp_types, x = Samples_ID, y = abundance)) +
-  geom_bar(position = "stack", stat = "identity") +
+  geom_bar(stat = "identity", width = .5) +
   scale_fill_manual(values = c("darkorange", "green", "purple")) +
   labs(title = "Proportion of PPEs and the overall picophytoplankton",
        x = "Samples_ID",
        y = "Relative abundance (%)",
        fill = "Picoeukarytes\ntypes"
-  )
+       
+  )+
+theme(axis.text.x = element_text(angle = 90))
+
 fig1
 ggsave("results/bar_plot.png", fig1, width = 5.97, height = 4.79, dpi = 300)
 
-
+#density
+p <- ggplot(data_pivot, aes(x=log(abundance), color=Pp_types)) + 
+  geom_density(adjust = 1.5)+
+  facet_wrap(~Pp_types)+
+  xlab("log(Relative abundance) (%)")
+p
 
 #====================#
 # Save CSV file
@@ -120,7 +170,7 @@ write.csv(ppe_stacked, "data/pico_stacked.csv", row.names = FALSE )
 # import pp_en_features file
 #===============================#
 pp_env <- read.csv("data/pp_env_features.csv")
-head(pp_env)
+view(pp_env)
 ppe_env <- pp_env %>% 
   select(-Samples_ID, -Legend)
 summary(ppe_env)
@@ -223,6 +273,7 @@ plot5 <- ggplot(
     label.x = 10
   ) 
 
+
 #Plot NO2NO3
 plot6 <- ggplot(
   data = ppe_env,
@@ -249,8 +300,63 @@ figure
 ggsave("results/ppe_features_plot.png", figure, width = 5.97, height = 4.79, dpi = 300)
 
 
-reglinaire <- lm(PPE ~ Depth, data = ppe_env)
-summary(reglinaire)
+# Modèles linéaires généralisés
+head(ppe_env)
+reg <- glm(PPE ~Depth + O2, family = gaussian(link="identity"), data = ppe_env)
+summary(reg)
+coefficients(reg)
+par(mfrow = c(2,2))
+plot(reg)
+hist(residuals(reg))
+
+ppe_env %>% 
+  select(-PPE) %>% 
+  mutate_if(is.factor, as.numeric) %>% 
+  as.matrix() -> cor_ppe
+
+corPpe <- cor(cor_ppe)
+
+corPpe %>% 
+  round(2) %>% 
+  knitr::kable() %>% 
+  kableExtra::kable_styling(font_size = 9)
+
+corrplot(corPpe, type = "upper", order = "AOE", 
+         tl.col = "black", tl.srt = 45, diag = FALSE)
+
+#Les corrélations positives sont affichées en bleu et 
+#Les corrélations négatives en rouge.
+#L’intensité de la couleur et la taille des cercles sont
+#proportionnelles aux coefficients de corrélation.
+#A droite du corrélogramme, la légende de couleurs
+#montre les coefficients de corrélation et les couleurs correspondantes.
+
+chart.Correlation(ppe_env, histogram=TRUE, pch=19)
+
+
+
+
+#====================#
+#Regression linéaire
+#====================#
+lm1 <- lm(PPE ~ Depth, data = ppe_env)
+lm1
+par(mfrow = c(2,2))
+plot(lm1)
+
+
+par(mfrow=c(1,2))
+coef(lm1)
+plot(PPE ~Depth, data = ppe_env)
+abline(lm1)
+hist(residuals(lm1))
+#test de Shapiro-Wilk et d'un test d'asymétrie (skewness)
+shapiro.test(residuals(lm1))
+library(e1071)
+skewness(residuals(lm1)) #coefficient positif,distribution décalée à gauche de la médiane
+#[1] 1.097413 assymétrie positive
+
+
 
 #=====================================#
 #Transfom dataframe in a longer form
@@ -258,7 +364,7 @@ summary(reglinaire)
 ppe_env_pivot <- 
   pivot_longer(ppe_env, 2:7, names_to = "param_var", values_to = "param_values" )
 
-ppe_env_pivot 
+head(ppe_env_pivot) 
 sum(is.na(ppe_env_pivot))
 
 
@@ -266,25 +372,99 @@ sum(is.na(ppe_env_pivot))
 #geom_point Visualization
 #===========================#
 
+# 
+# fig2 <- ggplot(
+#   data = ppe_env_pivot,
+#   aes(
+#     y = PPE,
+#     x = param_values,
+#     color = param_var
+#   )
+# ) +
+#   geom_point() +
+#   facet_wrap(~param_var) +
+#   facet_wrap(~param_var, scales = "free_x") +
+#   facet_wrap(~param_var, scales = "free_y")
+# fig2
+# ggsave("/results/ppe_env_feature_point.png", fig2, width = 5.97, height = 4.79, dpi = 300)
 
-fig2 <- ggplot(
-  data = ppe_env_pivot,
-  aes(
-    y = PPE,
-    x = param_values,
-    color = param_var
-  )
-) +
-  geom_point() +
-  facet_wrap(~param_var) +
-  facet_wrap(~param_var, scales = "free_x") +
-  facet_wrap(~param_var, scales = "free_y")
-fig2
-ggsave("/results/ppe_env_feature_point.png", fig2, width = 5.97, height = 4.79, dpi = 300)
+
+
 
 #==================================#
 # Import geospatial data file
 #==================================#
 pp_abundance <- read.csv("data/ppe_abundance.csv")
-head(pp_abundance)
+view(pp_abundance)
 glimpse(pp_abundance)
+
+
+###import map data
+map_data <- read.csv2("data/mapping.csv")
+
+
+# Recode name for column "Regions"
+mapData_recode <- map_data %>% 
+  mutate(Regions= recode(Regions,
+  "Indian Ocean " = "IO ",
+  "North Atlantic Ocean " = "NAO",
+  "North Pacific Ocean " = "NPO",
+  "South Atlantic Ocean " = "SAO",
+  "South Pacific Ocean " = "SPO",
+  "Southern Ocean " = "SO "
+  ))
+glimpse(mapData_recode)
+# Dropping  no some Columns 
+mapData1 <- mapData_recode %>% 
+  select(-c(X,Mean_T1, Marine_pelagic_biomes_Longhurst_2007,NO2NO3,PO4,Mean_Nitrates_umol_per_L,
+            NO2_umoll_c1,NO2_umolL_c2,Mean_Nitrates_umol_perLc1, Oxygene1,
+            oxygene2, NO2NO3_range,NO2NO3_range1, Salinity_range1, Salinity_range2,
+            Temperature.1, reads_count1,reads_count2, Mean_T2,Environmental_Feature))
+
+view(mapData1)
+
+# Rename long names columns in short names columns
+mapData2 <- mapData1 %>% 
+rename(latN = Latitude_deg_N, longE = Longitude_deg_E, depth = Sampling_depth_in_m, NO2NO3 = NO2NO3_umol_L,
+       PO4 = PO4_umol_L, NO2 = NO2_umol_L, O2 = Mean_Oxygen_umol_per_kg, Salinity = Mean_Salinity, PPEs = PPEs...)
+view(mapData2)
+# filter NA data
+anyNA(mapData2)
+
+mapData2 %>% 
+filter(if_any(everything(), ~ is.na(.x)))
+
+# Deleted NA data
+
+mapData2 <-mapData2[complete.cases(mapData2),]
+
+view(mapData2)
+# mapping distribution of PPES
+
+# define a custom palette
+pal <- colorNumeric(
+  c("#E1F5C4", "#EDE574", "#F9D423", "#FC913A", "#FF4E50"),
+  # colors depend on the count variable
+  domain =mapData2$PPEs,
+)
+mapData2$latN <- as.numeric(mapData2$latN)
+mapData2$longE <- as.numeric(mapData2$longE)
+
+
+map_p <- leaflet() %>% 
+      addTiles() %>% 
+      addCircleMarkers(data = mapData2, lng = ~longE, lat = ~latN, color = ~pal(PPEs),  opacity = 0.65, radius = 10) %>% 
+      leaflet::addLegend( # add a legend
+      data = mapData2,
+      pal = pal,
+      values = ~PPEs,
+      position = "topright",
+      title = "PPES % :",
+      opacity = 0.9
+    )
+map_p
+  #ggtitle("Densité empirique du nombre de locations entre 17h et 18h en 2011 par temps dégagé")
+
+
+
+
