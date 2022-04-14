@@ -1,0 +1,14 @@
+
+## Charger les librairies
+```{r}
+library(tidyverse)
+library(ggthemes)
+library(scales)
+library(GGally)
+library(paletteer)
+library(rmarkdown)
+library(xaringan)
+library(here)
+library("ggpubr")
+```
+
